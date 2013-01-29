@@ -3,9 +3,9 @@
 Plugin Name: WP Wunderground
 Plugin URI: http://www.seodenver.com/wunderground/
 Description: Get accurate and beautiful weather forecasts powered by Wunderground.com for your content or your sidebar.
-Version: 2.0
-Author: Erick Arbe
-Author URI: http://www.golfwebdesign.com
+Version: 1.2.5
+Author: Katz Web Services, Inc.
+Author URI: http://www.katzwebservices.com/
 */
 
 class wp_wunderground {
@@ -150,7 +150,7 @@ class wp_wunderground {
                                 'content' => "<input type='text' name='wp_wunderground[highlow]' id='wp_wunderground_highlow' value='".htmlspecialchars($this->highlow)."' size='40' style='width:95%!important;' />"
                         );
                         
-                        /*
+                        
                         $rows[] = array(
                         		'id' => 'wp_wunderground_icon_set',
                                 'label' => __('Icon Set', 'wp_wunderground'),
@@ -158,7 +158,6 @@ class wp_wunderground {
                         		'content' => $this->buildIconSet()
                         );
                         
-                        */
                         $checked = (empty($this->cache) || $this->cache == 'yes') ? ' checked="checked"' : '';
                         $rows[] = array(
                                 'id' => 'wp_wunderground_cache',
@@ -219,7 +218,7 @@ class wp_wunderground {
 			);
 			$link = '<p class="wp_wunderground" style="text-align:center;">'.trim($links[mt_rand(0, count($links)-1)]).'</p>';
 	
-			//echo apply_filters('wp_wunderground_showlink', $link);
+			echo apply_filters('wp_wunderground_showlink', $link);
 			
 			mt_srand(); // Make it random again.
     	}
@@ -431,20 +430,88 @@ EOD;
 				return '<!-- WP Wunderground Error : Weather feed was empty from '.$this->url.$this->location.' -->'.$content;
 			}
 			
-			$bloginfo = get_bloginfo('url');
-			
 			$tablehead = $tablebody = ''; $i = 0;
 			foreach($xml->simpleforecast->forecastday as $day) {
 				#$this->r($day); // For debug...
 				if($i < $numdays) {
 					$day = simpleXMLToArray($day);
 					extract($day);
-					$icon_url = $bloginfo.'/wp-content/plugins/wunderground/weather/'.$icon.'-260.png';
+					
+					$icon_url = $this->get_icon_path($icons, $iconset).$icon.'.gif';
+						
+					
+					
+					switch ($icon) {
+						case "rain":
+					        $lettericon = 'R';
+					        break;
+					    case "windy":
+					        $lettericon = 'F';
+					        break;
+					    case "mist":
+					        $lettericon = 'T';
+					        break;
+						case "snow":
+					        $lettericon = 'W';
+					        break;
+						case "sunny":
+					        $lettericon = 'B';
+					        break;
+					    case "mostlysunny":
+					        $lettericon = 'A';
+					        break;
+						case "hazy":
+					        $lettericon = 'J';
+					        break;
+						case "fog":
+					        $lettericon = 'E';
+					        break;
+						case "flurries":
+					        $lettericon = 'W';
+					        break;
+						case "cloudy":
+					        $lettericon = 'Y';
+					        break;
+						case "clear":
+					        $lettericon = 'B';
+					        break;
+						case "chancetstorms":
+					        $lettericon = 'P';
+					        break;
+						case "chancetstorm":
+					        $lettericon = 'P';
+					        break;
+					    case "chancerain":
+					        $lettericon = 'Q';
+					        break;
+					    case "mostlycloudy":
+					        $lettericon = 'N';
+					        break;
+					    case "partlycloudy":
+					        $lettericon = 'H';
+					        break;
+					    case "tstorm":
+					    	$lettericon = 'O';
+					    	break;
+					    case "tstorms":
+					    	$lettericon = 'O';
+					    	break;
+					    case "chancesnow":
+					        $lettericon = 'V';
+					        break;
+					    case "overcast":
+					        $lettericon = 'L';
+					        break;
+					    case "chancesleet":
+					        $lettericon = 'X';
+					        break;
+					}
+					
 					$icon_size = $this->get_icon_size($iconset);
 					$icon_size = " width=\"$icon_size\" height=\"$icon_size\"";
 					$high = $high[$measurement];
 					$low = $low[$measurement];
-					$icon = '<img src="'.$icon_url.'" alt="It is forcast to be '.$conditions.' at '.$date['pretty'].'" class="alignleft" />';
+					$icon = '<i aria-hidden="true" data-icon="'.$lettericon.'" class="icon"></i>';
 					$colwidth = round(100/$numdays, 2);
 					
 					$temp = str_replace('%%high%%', $high, $highlow);
@@ -455,15 +522,16 @@ EOD;
 					
 					$tablehead .= "\n\t\t\t\t\t\t\t".'<th scope="col" width="'.$colwidth.'%" align="'.$align.'">'.$label.'</th>';
 					
-					$tablebody .= apply_filters('wp_wunderground_forecast_icon',$icon).'<div class="weather-right"><h3 class="condition">'.apply_filters('wp_wunderground_forecast_conditions',$conditions).'</h3><h4 class="temperature">'.apply_filters('wp_wunderground_forecast_temp',$temp).'</h4></div>';
+					$tablebody .=
+					"\n\t\t\t\t\t\t\t".'<div class="weather-day clearfix"><div class="wp-date">'.apply_filters('wp_wunderground_forecast_conditions',$label).'</div><div class="wp-icon">'.apply_filters('wp_wunderground_forecast_icon',$icon).'</div><div class="wp-temp">'.apply_filters('wp_wunderground_forecast_temp',$temp).'</div></div>';
 				}
 				$i++;
 			}
 			if($this->true_false($caption)) {
-				//$caption = "\n\t\t\t\t\t<caption>{$caption}</caption>";
+				$caption = "\n\t\t\t\t\t<caption>{$caption}</caption>";
 			}
-			$table = '<div class="weather">'.$tablebody.'</div>';
-			
+			$table = '
+				<div class="wpweather">'.$tablebody.'</div>';
 			$table = preg_replace('/\s+/ism', ' ', $table);
 			set_transient($transient_title, $table, apply_filters('wp_wunderground_forecast_cache', 60*60*6));
 		}
